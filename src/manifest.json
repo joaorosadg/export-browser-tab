@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Export Browser Tab",
+  "short_name": "Export Tab",
+  "version": "1.0.0",
+  "description": "Captura a página (visível ou inteira) e exporta para PNG ou PDF. Sem rede, sem telemetria, sem dependências.",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "debugger", "downloads", "storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Exportar separador",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "Abrir o painel de exportação"
+    },
+    "full-png": {
+      "suggested_key": { "default": "Alt+Shift+P" },
+      "description": "Página inteira → PNG"
+    },
+    "full-pdf": {
+      "description": "Página inteira → PDF (imagem, A4)"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'"
+  }
+}

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <form id="form">
+    <fieldset>
+      <legend>Área</legend>
+      <div class="seg">
+        <label><input type="radio" name="area" value="full"><span>Página inteira</span></label>
+        <label><input type="radio" name="area" value="visible"><span>Área visível</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Formato</legend>
+      <div class="seg">
+        <label><input type="radio" name="format" value="png"><span>PNG</span></label>
+        <label><input type="radio" name="format" value="pdf"><span>PDF</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset id="pdf-opts">
+      <legend>Tipo de PDF</legend>
+      <label class="opt"><input type="radio" name="pdfMode" value="a4">
+        <span><b>Imagem · páginas A4</b><small>Igual ao ecrã, dividido para impressão</small></span></label>
+      <label class="opt"><input type="radio" name="pdfMode" value="continuous">
+        <span><b>Imagem · página contínua</b><small>Igual ao ecrã, sem cortes</small></span></label>
+      <label class="opt"><input type="radio" name="pdfMode" value="print">
+        <span><b>Texto selecionável</b><small>Via motor de impressão (usa CSS de impressão)</small></span></label>
+    </fieldset>
+
+    <fieldset class="checks">
+      <label id="lazy-row"><input type="checkbox" name="lazyLoad"> Percorrer a página antes (carrega imagens lazy)</label>
+      <label><input type="checkbox" name="saveAs"> Perguntar onde guardar</label>
+    </fieldset>
+
+    <button type="submit" id="go">Capturar</button>
+    <p id="status" role="status"></p>
+    <p id="hint"></p>
+  </form>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
