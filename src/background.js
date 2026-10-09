@@ -1,5 +1,5 @@
 import { buildPdf } from './lib/pdf.js';
-import { DEFAULTS } from './lib/defaults.js';
+import { DEFAULTS, normalize } from './lib/defaults.js';
 
 // ---------- Configuração ----------
 
@@ -9,6 +9,7 @@ const STRIP_PX = 8000; // altura máxima (px físicos) por captura individual
 const MAX_CANVAS_DIM = 32767;
 const MAX_CANVAS_AREA = 120_000_000; // ~480 MB de RAM — acima disto reduz-se a escala do PNG
 const PDF_TARGET_DENSITY = 2; // resolução mínima das imagens no PDF (px por px CSS)
+const EVAL_TIMEOUT_MS = 30_000; // nenhum script na página pode prender a captura (e o debugger) indefinidamente
 
 
 // ---------- Mensagens ----------
@@ -43,7 +44,7 @@ async function run(tab, options) {
   if (busy) throw new Error('Já existe uma captura em curso.');
   busy = true;
   try {
-    const opts = { ...DEFAULTS, ...options };
+    const opts = normalize(options);
     assertCapturable(tab.url);
     const file = await capture(tab, opts);
     await download(file, fileName(tab, file.ext), opts.saveAs);
@@ -195,14 +196,36 @@ function shot(cdp, clip, format, captureBeyondViewport) {
   }).then((r) => r.data);
 }
 
-async function evaluate(cdp, expression) {
-  const { result, exceptionDetails } = await cdp('Runtime.evaluate', {
-    expression,
-    returnByValue: true,
-    awaitPromise: true,
+// Os scripts correm num "isolated world" (como um content script): partilham o DOM,
+// mas a página não consegue substituir scrollTo, setTimeout, devicePixelRatio, etc.
+const worlds = new WeakMap();
+
+async function isolatedWorld(cdp) {
+  const { frameTree } = await cdp('Page.getFrameTree');
+  const { executionContextId } = await cdp('Page.createIsolatedWorld', {
+    frameId: frameTree.frame.id,
+    worldName: 'export-browser-tab',
   });
-  if (exceptionDetails) throw new Error(exceptionDetails.exception?.description || 'Erro ao avaliar script');
-  return result.value;
+  return executionContextId;
+}
+
+async function evaluate(cdp, expression) {
+  if (!worlds.has(cdp)) worlds.set(cdp, isolatedWorld(cdp));
+  const contextId = await worlds.get(cdp);
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('A página não respondeu a tempo. Recarrega-a e tenta de novo.')), EVAL_TIMEOUT_MS);
+  });
+  try {
+    const { result, exceptionDetails } = await Promise.race([
+      cdp('Runtime.evaluate', { expression, contextId, returnByValue: true, awaitPromise: true }),
+      timeout,
+    ]);
+    if (exceptionDetails) throw new Error(exceptionDetails.exception?.description || 'Erro ao avaliar script');
+    return result.value;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function metrics(cdp) {
@@ -246,7 +269,7 @@ async function prepareFullPage(cdp, lazyLoad) {
     );
   }
   await evaluate(cdp, 'scrollTo(0, 0); new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))');
-  return () => evaluate(cdp, `scrollTo(${original.x}, ${original.y})`).catch(() => {});
+  return () => evaluate(cdp, `scrollTo(${Number(original.x) || 0}, ${Number(original.y) || 0})`).catch(() => {});
 }
 
 // ---------- Download ----------
